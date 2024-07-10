@@ -1,0 +1,6 @@
+@SkiRunnerWebService_HostAddress = http://localhost:5287
+
+GET {{SkiRunnerWebService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
