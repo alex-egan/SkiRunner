@@ -1,21 +1,18 @@
 using Microsoft.EntityFrameworkCore;
 using SkiRunnerWebService.Models;
 using Microsoft.EntityFrameworkCore.Proxies;
+using Serilog;
 
 public class SkiRunnerContext : DbContext
 {
-    public DbSet<Resort> Resorts { get; set; }
-    public DbSet<Lift> Lifts { get; set; }
-    public DbSet<Run> Runs { get; set; }
+    public DbSet<Resort> Resorts { get; set; } = null!;
+    public DbSet<ResortEntity> ResortEntities { get; set; } = null!;
 
-    public string DbPath { get; }
+    public string DbPath { get; } = null!;
 
     public SkiRunnerContext()
     {
-        Console.WriteLine("Creating SkiRunner Context");
-        // var folder = Environment.SpecialFolder.LocalApplicationData;
-        // var path = Environment.GetFolderPath(folder);
-        // DbPath = Path.Join(path, "skirunner.db");
+        Log.Information("Creating SkiRunnerContext.");
     }
 
     // The following configures EF to create a Sqlite database file in the
@@ -35,28 +32,21 @@ public class SkiRunnerContext : DbContext
         entity.Property(e => e.Name).IsRequired();
       });
 
-      modelBuilder.Entity<Lift>(entity =>
+      modelBuilder.Entity<Resort>(entity =>
       {
         entity.HasKey(e => e.Id);
         entity.Property(e => e.Name).IsRequired();
-        entity.HasOne(r => r.Resort)
-          .WithMany(r => r.Lifts)
-          .HasForeignKey(l => l.ResortId)
-          .IsRequired();
+        entity.HasMany(r => r.ResortEntities)
+              .WithOne(r => r.Resort);
       });
 
-      modelBuilder.Entity<Run>(entity => 
+      modelBuilder.Entity<ResortEntity>(entity => 
       {
         entity.HasKey(r => r.Id);
         entity.Property(r => r.Name).IsRequired();
-        entity.HasMany(r => r.AccessibleRuns)
-            .WithOne()
-            .HasForeignKey(r => r.ParentRunId)
-            .IsRequired(false);
-        entity.HasOne(r => r.Lift)
-            .WithMany(l => l.AccessibleRuns)
-            .HasForeignKey(r => r.LiftId)
-            .IsRequired(false);
+        entity.Property(r => r.Type).IsRequired();
+        entity.HasMany(r => r.AccessibleEntities)
+              .WithOne(r => r.ParentEntity);
       });
     }
 }
