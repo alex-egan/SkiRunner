@@ -1,3 +1,5 @@
+using SkiRunnerWebService.Models.Enums;
+
 namespace SkiRunnerWebService.Models;
 
 // Node represents a cell in the grid with properties like coordinates, whether it's walkable, and pathfinding-related costs.
@@ -8,35 +10,32 @@ namespace SkiRunnerWebService.Models;
 
 public class Node
 {
-    public int X { get; set; }
-    public int Y { get; set; }
-    public bool IsWalkable { get; set; }
+    public int Start { get; set; }
+    public int End { get; set; }
+    public RunDifficulty? Difficulty { get; set; }
     public Node Parent { get; set; } = null!;
     public int G { get; set; } // Cost from start to current node
-    public int H { get; set; } // Heuristic cost from current node to end
-    public int F => G + H; // Total cost
 
-    public Node(int x, int y, bool isWalkable)
+    public Node(int start, int end, RunDifficulty? difficulty)
     {
-        X = x;
-        Y = y;
-        IsWalkable = isWalkable;
+        Start = start;
+        End = end;
+        Difficulty = difficulty;
     }
 }
 
 public class AStar
 {
-    private static readonly int[] DX = [ -1, 1, 0, 0 ];
-    private static readonly int[] DY = [ 0, 0, -1, 1 ];
-
-    public static List<Node> FindPath(Node[,] grid, Node start, Node end)
+    public static List<Node> FindPath(List<Node> nodes, Node start, Node end)
     {
+        RunDifficulty userProficiency = RunDifficulty.Beginner;
+
         var openList = new List<Node> { start };
         var closedList = new HashSet<Node>();
 
         while (openList.Count > 0)
         {
-            var current = GetLowestFScoreNode(openList);
+            Node current = GetLowestGScoreNode(openList);
             if (current == end)
             {
                 return ReconstructPath(current);
@@ -45,19 +44,16 @@ public class AStar
             openList.Remove(current);
             closedList.Add(current);
 
-            foreach (var neighbor in GetNeighbors(grid, current))
+            foreach (Node neighbor in GetNeighbors(nodes, current.End))
             {
-                if (!neighbor.IsWalkable || closedList.Contains(neighbor))
-                {
+                if (!CanCompleteEntity(userProficiency, neighbor.Difficulty) || closedList.Contains(neighbor)) 
                     continue;
-                }
 
-                var tentativeGScore = current.G + 1;
+                int tentativeGScore = CalculateDistanceCost(current.End, neighbor.Start);
                 if (!openList.Contains(neighbor))
                 {
                     neighbor.Parent = current;
                     neighbor.G = tentativeGScore;
-                    neighbor.H = GetHeuristicCost(neighbor, end);
                     openList.Add(neighbor);
                 }
                 else if (tentativeGScore < neighbor.G)
@@ -71,12 +67,18 @@ public class AStar
         return []; // No path found
     }
 
-    private static Node GetLowestFScoreNode(List<Node> openList)
+    private static int CalculateDistanceCost(int currentLocation, int startLocation)
+        => Math.Abs(currentLocation - startLocation);
+
+    private static bool CanCompleteEntity(RunDifficulty userProficiency, RunDifficulty? runDifficulty)
+        => runDifficulty is null || (int)userProficiency >= (int)runDifficulty;
+
+    private static Node GetLowestGScoreNode(List<Node> openList)
     {
         Node lowest = openList[0];
         foreach (var node in openList)
         {
-            if (node.F < lowest.F)
+            if (node.G < lowest.G)
             {
                 lowest = node;
             }
@@ -84,26 +86,8 @@ public class AStar
         return lowest;
     }
 
-    private static List<Node> GetNeighbors(Node[,] grid, Node node)
-    {
-        List<Node> neighbors = [];
-        for (int i = 0; i < DX.Length; i++)
-        {
-            int newX = node.X + DX[i];
-            int newY = node.Y + DY[i];
-
-            if (newX >= 0 && newX < grid.GetLength(0) && newY >= 0 && newY < grid.GetLength(1))
-            {
-                neighbors.Add(grid[newX, newY]);
-            }
-        }
-        return neighbors;
-    }
-
-    private static int GetHeuristicCost(Node a, Node b)
-    {
-        return Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y);
-    }
+    private static List<Node> GetNeighbors(List<Node> nodes, int currentLocation)
+        => [.. nodes.Where(n => n.Start == currentLocation)];
 
     private static List<Node> ReconstructPath(Node current)
     {
@@ -115,47 +99,5 @@ public class AStar
         }
         path.Reverse();
         return path;
-    }
-}
-
-// Example usage:
-public class TestProgram
-{
-    public static void Main()
-    {
-        int width = 5;
-        int height = 5;
-        var grid = new Node[width, height];
-
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                grid[x, y] = new Node(x, y, true);
-            }
-        }
-
-        // Add some obstacles
-        grid[1, 2].IsWalkable = false;
-        grid[2, 2].IsWalkable = false;
-        grid[3, 2].IsWalkable = false;
-
-        var start = grid[0, 0];
-        var end = grid[4, 4];
-
-        var path = AStar.FindPath(grid, start, end);
-
-        if (path.Count > 0)
-        {
-            Console.WriteLine("Path found:");
-            foreach (var node in path)
-            {
-                Console.WriteLine($"({node.X}, {node.Y})");
-            }
-        }
-        else
-        {
-            Console.WriteLine("No path found.");
-        }
     }
 }

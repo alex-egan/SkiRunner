@@ -1,44 +1,57 @@
-using Microsoft.EntityFrameworkCore;
 using SkiRunnerWebService.Models;
-using SkiRunnerWebService.Services.ResortService;
 using SkiRunnerWebService.Models.Enums;
-using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
+List<ResortEntity> resortEntities = [
+    new Lift() {
+        Start = 1,
+        End = 2
+    },
+    new Run() {
+        Start = 2,
+        End = 3,
+        Difficulty = RunDifficulty.Beginner
+    },
+    new Run() {
+        Start = 2,
+        End = 4,
+        Difficulty = RunDifficulty.Intermediate
+    },
+    new Lift() {
+        Start = 3,
+        End = 5
+    },
+    new Run() {
+        Start = 5,
+        End = 1,
+        Difficulty = RunDifficulty.Beginner
+    },
+    new Run() {
+        Start = 5,
+        End = 6,
+        Difficulty = RunDifficulty.Expert
+    }
+];
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+List<Node> nodes = [];
 
-builder.Services.AddControllers();
-builder.Services.AddScoped<IResortService, ResortService>();
-builder.Services.AddSingleton<SkiRunnerContext>();
-
-var app = builder.Build();
-
-app.MapControllers();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
+foreach (ResortEntity entity in resortEntities) {
+    nodes.Add(new(entity.Start, entity.End, entity is Run r ? r.Difficulty : null));
 }
 
-app.UseHttpsRedirection();
+Node start = nodes[0];
+Node end = nodes[4];
 
-using var log = new LoggerConfiguration()
-    .WriteTo.MySQL("server=localhost;database=SkiRunner;user=root;password=AlSnow13!!")
-    .CreateLogger();
+var path = AStar.FindPath(nodes, start, end);
 
-Log.Logger = log;
-
-app.Run();
-
-
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+if (path.Count > 0)
 {
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    Console.WriteLine("Path found:");
+    foreach (var node in path)
+    {
+        Console.WriteLine($"({node.Start}, {node.End})");
+    }
+}
+else
+{
+    Console.WriteLine("No path found.");
 }
